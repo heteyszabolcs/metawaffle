@@ -27,7 +27,7 @@ def extract_coordinates(peak_list,resolution,section_pos,tmpdir,chromosome,badco
         chr1, beg1, end1 = peak1.replace(':','-').split('-')
         chr2, beg2, end2 = peak2.replace(':','-').split('-')
         pos = section_pos[chr1][0]
-        if beg1 < beg2:
+        if int(beg1) < int(beg2):
             start_bin1 = pos + (int(beg1) / resolution)
             end_bin1 = pos + (int(end1) / resolution)
 
