@@ -3,9 +3,8 @@ from collections import OrderedDict
 from datetime    import datetime
 from itertools   import combinations
 from os          import path
-
 from pysam       import AlignmentFile
-
+import math
 
 def binning_bed(peak_file, resolution, windows_span, max_dist, outdir,
                 name, chrom_sizes, windows, **kwargs):
@@ -16,14 +15,14 @@ def binning_bed(peak_file, resolution, windows_span, max_dist, outdir,
         Get information per peak of a feature +/-
         '''
         c, p1, p2, f = line.split()[:4]
-        return c, (int(p1) + int(p2)) / 2 / resolution, f
+        return c, (int(p1) + int(p2)) / 2 , f
 
     def read_line_no_feature(line):
         '''
         Get information per peak
         '''
         c, p1, p2 = line.split()[:3]
-        return c, (int(p1) + int(p2)) / 2 / resolution, ''
+        return c, (int(p1) + int(p2)) / 2 , ''
 
     peaks = open(peak_file, "r")
 
@@ -36,8 +35,6 @@ def binning_bed(peak_file, resolution, windows_span, max_dist, outdir,
         read_line = read_line_no_feature
     peaks.seek(0)
 
-    windows_span /= resolution
-
     bin_coordinate = set((c, p, f) for c, p, f in map(read_line, peaks)
                           if p > windows_span)  # take into account to add windows span both sides
 
@@ -48,9 +45,9 @@ def binning_bed(peak_file, resolution, windows_span, max_dist, outdir,
     # - Not overlapping peaks, windows span added to bin*2 (wsp)
     # - below max_dist
     # - Different combination of the features
-
-    wsp = (windows_span * 2) + 1
-    mdr = max_dist / resolution
+    
+    wsp = (windows_span * 2)
+    mdr = max_dist
 
     pairs = ((a, b) for a, b in combinations(bin_coordinate, 2) if a[0] == b[0]
              and wsp <= abs(b[1] - a[1]) <= mdr)
@@ -65,23 +62,22 @@ def binning_bed(peak_file, resolution, windows_span, max_dist, outdir,
                 intervals.setdefault((lower, upper), {})
                 intervals[(lower, upper)].setdefault(
                    (f1, f2), []).append((chromosome1, bs1, chromosome2, bs2))
-
+    
+    
     # define categories and write pairs
     for beg, end in intervals:
         print datetime.now().strftime('%Y-%m-%d %H:%M:%S'),'Writing interval: ', beg, end
         for f1, f2 in intervals[(beg, end)]:
             extra = ('both' if f1 == f2 else f1) + '_' + f2
             w = open(path.join(outdir, '%s_%d_%d_%s.tsv' % (
-                name, beg * resolution, end * resolution, extra)), 'w')
+                name, beg, end, extra)), 'w')
             for c1, s1, c2, s2 in intervals[(beg, end)][(f1, f2)]:
-                start1, end1 = s1 - windows_span, s1 + windows_span
-                start2, end2 = s2 - windows_span, s2 + windows_span
                 # check chromosome length
-                new_start1, new_end1 = start1 * resolution, end1 * resolution
-                new_start2, new_end2 = start2 * resolution, end2 * resolution
+                new_start1, new_end1 = s1 - windows_span, s1 + windows_span
+                new_start2, new_end2 = s2 - windows_span, s2 + windows_span
                 if new_end1 <= chrom_sizes[c1] and new_end2 <= chrom_sizes[c1]:
                     w.write('%s:%d-%d\t%s:%d-%d\n' % (
-                       c1, new_start1, new_end1, c2, new_start2, new_end2))
+                        c1, new_start1, new_end1, c2, new_start2, new_end2))
             w.close()
 
 
@@ -97,7 +93,7 @@ def main():
     max_dist     = opts.max_dist
     windows      = opts.windows
 
-    windows = [[int(x) / resolution for x in win.split('-')] for win in windows]
+    windows = [[int(x) for x in win.split('-')] for win in windows]
 
     ## peaks file sorted per chromosome
     bamfile = AlignmentFile(inbam, 'rb')

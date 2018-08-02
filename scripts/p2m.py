@@ -58,7 +58,7 @@ def greater_pos(pos1, pos2):
 def readfiles(file1,file2,chromosome):
     def split_line1(l):
         a, b, c, d = l.split()
-        return (int(a), int(b)), int(c), float(d)
+        return (int(a), int(b)), c, d
     def split_line2(l):
         a, b, c, d = map(int, l.split())
         return (a, b), c, d
@@ -70,12 +70,12 @@ def readfiles(file1,file2,chromosome):
     try:
         while True:
             if eq_pos(pos1, pos2):
-                avg_raw[(x,y)] += raw
-                avg_nrm[(x,y)] += nrm
+                avg_raw[(x,y)] += int(raw)
+                avg_nrm[(x,y)] += float(nrm)
                 avg_pass[(x,y)] += 1
                 pos2_ = pos2
                 pos2, x, y = split_line2(fh2.next())
-                if pos2_ != pos2:  # some cells in the peak file are repeated
+                if pos2_ != pos2:  # some cells in the peak file are repeated but different cell in metamatrix
                     pos1, raw, nrm = split_line1(fh1.next())
             elif greater_pos(pos1, pos2):
                 avg_pass[(x,y)] += 1
@@ -215,10 +215,10 @@ def target_plot(matrix,target,vmax,vmin,distance,out):
 
 def mean_metamatrix(avg_raw, avg_nrm, avg_pass, outdir, label):
     '''To obtain the mean matrix, divide raw and norm per passages, plot if wanted'''
-    size = max(avg_pass.keys())[0] + 1
+    size1, size2 = max(avg_pass.keys())[0] + 1, max(avg_pass.keys())[1] + 1
 
-    array_raw = np.zeros((size, size))
-    array_nrm = np.zeros((size, size))
+    array_raw = np.zeros((size1, size2))
+    array_nrm = np.zeros((size1, size2))
     for x in avg_raw.keys():
         array_raw[x] = float(avg_raw[x]) / float(avg_pass[x])
         array_nrm[x] = float(avg_nrm[x]) / float(avg_pass[x])
@@ -338,13 +338,13 @@ def main():
                     os.system("cat "+tmp+">> %s%s_m"%(tmpdir,chromosome))
                 for tmp in tmp_chr:
                     os.system("rm "+tmp)
-                fh = subprocess.Popen("sort -k1,2n --parallel=24 %s%s_m --temporary-directory=/scratch/tmp/ > %s%s_sorted"%(tmpdir,chromosome,tmpdir,chromosome),
+                fh = subprocess.Popen("sort -k1,2n --parallel=24 -S 10%% %s%s_m --temporary-directory=/scratch/tmp/ > %s%s_sorted"%(tmpdir,chromosome,tmpdir,chromosome),
                                       shell=True)
                 fh.communicate()
                 os.system("rm %s%s_m"%(tmpdir,chromosome))
             else:
                 print datetime.now().strftime('%Y-%m-%d %H:%M:%S'),' - Sorting...'
-                fh = subprocess.Popen("sort -k1,2n --parallel=24 %s --temporary-directory=/scratch/tmp/ > %s%s_sorted"%(tmp_chr[0],tmpdir,chromosome),
+                fh = subprocess.Popen("sort -k1,2n --parallel=24 -S 10%% %s --temporary-directory=/scratch/tmp/ > %s%s_sorted"%(tmp_chr[0],tmpdir,chromosome),
                                       shell=True)
                 fh.communicate()
                 os.system("rm "+tmp_chr[0])
