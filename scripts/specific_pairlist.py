@@ -6,7 +6,7 @@ from os          import path
 from pysam       import AlignmentFile
 import math
 
-def binning_bed(peak_file, resolution, windows_span, max_dist, outdir,
+def binning_bed(peak_file, windows_span, max_dist, outdir,
                 name, chrom_sizes, windows, **kwargs):
     '''Input bed file of ChIP peaks and bin into desired resolution of Hi-C'''
 
@@ -85,7 +85,6 @@ def main():
     opts = get_options()
 
     inbam        = opts.inbam
-    resolution   = opts.resolution
     peak_file    = opts.peak_file
     outdir       = opts.outdir
     name         = opts.name
@@ -97,18 +96,11 @@ def main():
 
     ## peaks file sorted per chromosome
     bamfile = AlignmentFile(inbam, 'rb')
-    sections = OrderedDict(zip(bamfile.references, [x / resolution + 1
-                                                    for x in bamfile.lengths]))
-    total = 0
-    section_pos = dict()
-    for crm in sections:
-        section_pos[crm] = (total, total + sections[crm])
-        total += sections[crm]
 
     chrom_sizes = OrderedDict(zip(bamfile.references,
                                   [x for x in bamfile.lengths]))
 
-    binning_bed(peak_file, resolution, windows_span, max_dist, outdir, name,
+    binning_bed(peak_file, windows_span, max_dist, outdir, name,
                 chrom_sizes, windows)
 
     print datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Sublists written!'
@@ -130,9 +122,6 @@ def get_options():
                         (norm and raw)''')
     parser.add_argument('-b','--bam', dest='inbam', required=True,
                         metavar='PATH', help= 'Input HiC-BAM file')
-    parser.add_argument('-r', '--resolution', dest='resolution', required=True,
-                        metavar='INT', default=False, type=int,
-                        help='wanted resolution from generated matrix')
     parser.add_argument('-o', '--outdir', dest='outdir', default='',
                         metavar='PATH', help='output directory')
     parser.add_argument('-n', '--name', dest='name', default='pairs',
