@@ -187,8 +187,8 @@ def main():
         nsize = check_size.readlines()
         if len(nsize) > 0:
             readfiles(file1,file2,chromosome)
-#            os.system("rm %s%s_sorted"%(tmpdir,chromosome))
-#            os.system("rm %s%s"%(tmpdir,chromosome))
+            os.system("rm %s%s_sorted"%(tmpdir,chromosome))
+            os.system("rm %s%s"%(tmpdir,chromosome))
         else:
             print 'No information for ', chromosome, ' all badcolumns :('
             os.system("rm %s%s_sorted"%(tmpdir, chromosome))
