@@ -1,4 +1,4 @@
-.. image:: https://github.com/3DGenomes/meta-waffle/Logo_loopbit.pdf
+.. image:: https://github.com/3DGenomes/meta-waffle/blob/master/Logo_loopbit.pdf
    :height: 50
    :width: 240
 
