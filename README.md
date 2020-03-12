@@ -1,4 +1,4 @@
-.. image:: https://github.com/3DGenomes/TADbit/blob/master/doc/source/pictures/Logo_loopbit.pdf
+.. image:: https://github.com/3DGenomes/meta-waffle/Logo_loopbit.pdf
    :height: 50
    :width: 240
 
