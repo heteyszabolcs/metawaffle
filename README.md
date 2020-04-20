@@ -2,13 +2,15 @@
 
 This add-on of TADbit allows you to deconvolve the structural signal from a set of regions of interest and obtain the different structural clusters.  
 
-Requirements
+# Requirements
+
 *************
 
-
-Documentation
+# Installation
 *************
 
+# Quick start
+*************
 
 Frequently asked questions
 --------------------------
