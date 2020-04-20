@@ -1,4 +1,4 @@
-<img src="https://github.com/3DGenomes/meta-waffle/blob/master/Logo_loopbit.png" height= "80" width="55">
+<img src="https://github.com/3DGenomes/meta-waffle/blob/master/Logo_capture.png" height= "225" width="500">
 
 This add-on of TADbit allows you to deconvolve the structural signal from a set of regions of interest and obtain the different structural clusters.  
 
