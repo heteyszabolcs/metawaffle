@@ -69,8 +69,7 @@ metawaffle check_peaks \
 ```
 The quality check will provide worthy information to decide the genomic interval of distance and the windows span around the center of the peak. Then, the pair list will be generated running the `pairlist` script.
 
-![Image](https://github.com/3DGenomes/meta-waffle/tree/master/images/test_evaluation.png)
-
+<img src="https://github.com/3DGenomes/meta-waffle/blob/master/images/test_evaluation.png" height= "350" width="470">
 
 ```bash
 metawaffle pairlist \
