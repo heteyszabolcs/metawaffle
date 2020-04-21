@@ -74,14 +74,27 @@ The quality check will provide worthy information to decide the genomic interval
 ```bash
 metawaffle pairlist \
 -i examples/CTCF_chr22.bed \
--b examples/chr22_GM12878.bam \
+-size examples/human_grch38_size \
 -o examples/ \
 -n ctcf_example \
--s  9 \
--m 1000000 \
--w 255000-1000000 \
+-s  22500 \
+-m 1500000 \
+-w 255000-1500000 \
 ```
-[OUTPUT!!]
+This command will generate a file with the coordinate pairs with the CTCF peak centered in 45 kb region. Only those coordinates within the interval distance of 255 kb - 1.5 Mb will be stored.
+
+The output will be a two column file:
+
+*chr22:40502977-40547977	chr22:41644314-41689314*
+
+*chr22:39308838-39353838	chr22:40502977-40547977*
+
+*chr22:40502977-40547977	chr22:41650826-41695826*
+
+*chr22:39291974-39336974	chr22:40502977-40547977*
+
+*chr22:39492032-39537032	chr22:40502977-40547977*
+
 
 ## Extracting submatrices
 The next step will be to extract the contact matrices from the coordinate pair list.
