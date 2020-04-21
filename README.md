@@ -97,24 +97,23 @@ The output will be a two column file:
 
 
 ## Extracting submatrices
-The next step will be to extract the contact matrices from the coordinate pair list.
+The next step will be to extract the contact matrices from the coordinate pair list. For the example we will extract the contact matrices from randomly selected 1,000 coordinate pairs.
+
 ```bash
 metawaffle peak2matrix \
--i examples/CTCF_chr22_pairs.bed \
--bam examples/chr22_GM12878.bam \
+-i example/ctcf_255000_1500000.tsv \
+-size example/human_grch38_size \
 -r 5000 \
--t examples/tmpdir/ \
--o examples/ \
+-t example/tmpdir/ \
+-o example/ \
 -C 8 \
--n ctcf_example \
--b examples/biases_chr22_GM12878.pickle \
--mats 
--m 1000000 \
--w 255000-1000000 \
--specific True \
+-n ctcf \
+-b example/biases_chr22_GM12878.pickle \
+-mats example/matrix/ \
+-s 22500 \
+-sample 1000 \
 ```
-
-[OUTPUT!!]
+The output file will contain row-wise the coordinates and their contact matrices from the pairlist file.
 
 ## Self-organizing feature map
 To classify the extracted contact matrices according to their structural pattern, a competitive neural network provided in `Neupy` package, the Self-Organizing Feature Map (SOFM or SOM).
