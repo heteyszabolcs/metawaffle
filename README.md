@@ -60,7 +60,7 @@ You can notice that if you do not have a BAM format file, you can use a tabsepar
 - normalized contact value: The normalized interaction value.
 
 ### ChIP-peak file
-For the tutorial we will use the ChIP-seq peaks from CTCF in the chromosome 22 (listed in PAPER).First of all we can run a quality check to know the distribution and the width of the peaks.
+For the tutorial we will use the ChIP-seq peaks from CTCF in the chromosome 2 (listed in PAPER).First of all we can run a quality check to know the distribution and the width of the peaks.
 
 ```bash
 metawaffle check_peaks \
@@ -73,15 +73,15 @@ The quality check will provide worthy information to decide the genomic interval
 
 ```bash
 metawaffle pairlist \
--i examples/CTCF_chr22.bed \
--size examples/human_grch38_size \
--o examples/ \
--n ctcf_example \
--s  22500 \
--m 1500000 \
--w 255000-1500000 \
+example/ctcf_chr2.bed \
+example/ \
+example/human_grch38_size \
+ctcf_chr2 \
+27500 \
+2500000 \
+255000-2500000 \
 ```
-This command will generate a file with the coordinate pairs with the CTCF peak centered in 45 kb region. Only those coordinates within the interval distance of 255 kb - 1.5 Mb will be stored.
+This command will generate a file with the coordinate pairs with the CTCF peak centered in 55 kb region. Only those coordinates within the interval distance of 255 kb - 2.5 Mb will be stored.
 
 The output will be a two column file:
 
@@ -97,21 +97,21 @@ The output will be a two column file:
 
 
 ## Extracting submatrices
-The next step will be to extract the contact matrices from the coordinate pair list. For the example we will extract the contact matrices from randomly selected 1,000 coordinate pairs.
+The next step will be to extract the contact matrices from the coordinate pair list. For the example we will extract the all the matrices using the tag -A True. If you only want to use a random set of coordinates from the pairlist, -A True and specify the sample size.
 
 ```bash
 metawaffle peak2matrix \
--i example/ctcf_255000_1500000.tsv \
--size example/human_grch38_size \
--r 5000 \
--t example/tmpdir/ \
--o example/ \
--C 8 \
--n ctcf \
--b example/biases_chr22_GM12878.pickle \
--mats example/matrix/ \
--s 22500 \
--sample 1000 \
+example/ctcf_chr2_255000_2500000.tsv \
+example/human_grch38_size \
+5000 \
+example/tmpdir/ \
+example/ \
+8 \
+ctcf_chr2 \
+example/biases_5kb_GM12878.pickle \
+example/matrix/ \
+27500 \
+-A True \
 ```
 The output file will contain row-wise the coordinates and their contact matrices from the pairlist file.
 
@@ -120,24 +120,35 @@ To classify the extracted contact matrices according to their structural pattern
 
 ```bash
 metawaffle sofm \
--i examples/CTCF_chr22_pairs.bed \
--o examples/ \
--n ctcf_example \
--sigma 0.3 \
--e 10 \
--s 9 \
--g 4 \
--l 0.2 \
--std \
--step \
+example/matrices_ctcf_chr2.tsv \
+example/sofm/ \
+ctcf_chr2 \
+20 \
+12 \
+5 \
+1 \
+0.01 \
+0.01 \
+-plot True \
 ```
-[OUTPUT!!]
+If you want to know more about SOFM: http://neupy.com/apidocs/neupy.algorithms.competitive.sofm.html .
+After running this command, you will obtain various files:
+
+- Cluster_n.bed: You will obtain bed files for each of the neurons according to the grid size, with the classified coordinates.
+- Heatmap_info : image with the number of coordinates classified per neuron, in order to check how the coordinates have been distributed in the SOFM map.
+<img src="https://github.com/3DGenomes/meta-waffle/blob/master/images/heatmap_info_ctcf_chr2.png" height= "350" width="350">
+- weight_matrix.npy: In here you will have the weight of each of the input values provided to SOFM.
+- sofm.pickle: The model trained. In order to repeat or re-run the analysis.
+- If -plot True: image of the SOFM map. 
+<img src="https://github.com/3DGenomes/meta-waffle/blob/master/images/ctcf_chr2_SOFM.png" height= "350" width="350">
+
 
 # Usage
 meta-waffle has these basic commands: 
 * `bam2count` to convert the bamfile into tabseparated counts.
+* `check_peaks` to evaluate peaks of interest, and get the widht and distance between contiguous peaks.
 * `pairlist` used to generate the coordinates list to extract the matrices.
-* `p2m` contains the tools to extract the contact matrices from the pairs list.
+* `peak2matrix` contains the tools to extract the contact matrices from the pairs list.
 * `sofm` used to classify the contact matrices according to their structural pattern.
 
 
