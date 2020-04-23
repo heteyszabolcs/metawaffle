@@ -58,15 +58,20 @@ def greater_pos(pos1, pos2):
 
 def readfiles(file1,file2,chromosome, avg_nrm):
     def split_line1(l):
-        a, b, c, d = l.split()
-        return (int(a), int(b)), c, d
+        if len(l.split()) == 4:
+            a, b, c, d = l.split()
+            return (int(a), int(b)), d
+        else:
+            a, b, c = l.split()
+            return (int(a), int(b)), c
+
     def split_line2(l):
         a, b, c, d, f = l.split()
         return (int(a), int(b)), int(c), int(d), f
     logger.info('[MAIN]: Reading matrix and peaks...')
     fh1 = open(file1)
     fh2 = open(file2)
-    pos1, raw, nrm = split_line1(fh1.next())
+    pos1, nrm = split_line1(fh1.next())
     pos2, x, y, f = split_line2(fh2.next())
     try:
         while True:
@@ -75,12 +80,12 @@ def readfiles(file1,file2,chromosome, avg_nrm):
                 pos2_ = pos2
                 pos2, x, y, f = split_line2(fh2.next())
                 if pos2_ != pos2:  # some cells in the peak file are repeated but different cell in metamatrix
-                    pos1, raw, nrm = split_line1(fh1.next())
+                    pos1, nrm = split_line1(fh1.next())
             elif greater_pos(pos1, pos2):
                 pos2, x, y, f = split_line2(fh2.next())
             else:
-                pos1, raw, nrm = split_line1(fh1.next())
-
+                pos1, nrm = split_line1(fh1.next())
+                
     except StopIteration:
         fh1.close()
         fh2.close()
