@@ -2,8 +2,6 @@
 
 This add-on of TADbit allows you to deconvolve the structural signal from a set of regions of interest and obtain the different structural clusters.  
 
-meta-waffle is a tool for the extraction and classification of 
-
 <!-- TOC depthFrom:1 depthTo:8 withLinks:1 updateOnSave:1 orderedList:0 -->
 
   - [Requirements](#requirements)
