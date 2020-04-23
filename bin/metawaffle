@@ -1,0 +1,631 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import argparse
+import textwrap
+
+
+import logging
+logger = logging.getLogger('')
+
+
+class Metawaffle(object):
+
+    def __init__(self):
+        parser = metawaffle_parser()
+
+        flag_increments = {
+            '-l': 2, '--log-file': 2,
+        }
+
+        option_ix = 1
+        while (option_ix < len(sys.argv) and
+               sys.argv[option_ix].startswith('-')):
+            if sys.argv[option_ix] in flag_increments:
+                option_ix += flag_increments[sys.argv[option_ix]]
+            else:
+                option_ix += 1
+
+        # parse_args defaults to [1:] for args, but you need to
+        # exclude the rest of the args too, or validation will fail
+        args = parser.parse_args(sys.argv[1:option_ix+1])
+
+        # configure logger
+        if args.verbosity == 1:
+            log_level = logging.WARN
+        elif args.verbosity == 2:
+            log_level = logging.INFO
+        elif args.verbosity > 2:
+            log_level = logging.DEBUG
+        else:
+            log_level = logging.INFO
+        logger.setLevel(log_level)
+
+        if args.log_file is None:
+            sh = logging.StreamHandler()
+            sh_formatter = logging.Formatter(
+                "%(asctime)s %(levelname)s %(message)s")
+            sh.setFormatter(sh_formatter)
+            sh.setLevel(log_level)
+            logger.addHandler(sh)
+        else:
+            log_file = os.path.expanduser(args.log_file)
+            fh = logging.FileHandler(log_file, mode='a')
+            formatter = logging.Formatter(
+                "%(asctime)s %(levelname)s %(message)s")
+            fh.setFormatter(formatter)
+            fh.setLevel(log_level)
+            logger.addHandler(fh)
+
+        # get version info
+        if args.print_version:
+            import metawaffle
+            print(metawaffle.__version__)
+            exit()
+
+        if args.command is None or not hasattr(self, args.command):
+            print('Unrecognized command')
+            parser.print_help()
+            exit(1)
+
+        # echo parameters back to user
+        command = " ".join(sys.argv)
+        logger.info("Running '{}'".format(command))
+
+        # use dispatch pattern to invoke method with same name
+        getattr(self, args.command)([sys.argv[0]] + sys.argv[option_ix:])
+
+        # echo parameters back to user
+        logger.info("Finished '{}'".format(" ".join(sys.argv)))
+
+    def bam2count(self, argv):
+        parser = MyParser(
+            description='''
+            Transform bam file tab-separated file, considering the resolution, 
+            the raw count and the biases to get the normalized interaction value.''',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+        parser.add_argument(
+            'bam',
+            type=str,
+            help='''BAM file, can contain whole genome or specific chromosomes.''')
+
+        parser.add_argument(
+            'resolution',
+            type=int,
+            help='''Desired resolution to extract the contact values (bp).''')
+
+        parser.add_argument(
+            'outdir',
+            type=str,
+            help='''Output directory to store the counts, chromosome-wise. 
+            It is highly recommended to have a specific directory to store the matrices''')
+
+        parser.add_argument(
+            '-C', dest='ncpus', 
+            type=int, default=24, required=False,
+            help='''Number of cpus to speed up the process.''')
+
+        parser.add_argument(
+            'biases',
+            type=str,
+            help='''Pickle file, obtained running TADbit normalization tool, or generated apart. 
+            It contains information about bad columns, resolution, decay and biases. 
+            Check the provided example for more information.''')
+
+        args = parser.parse_args(argv[2:])
+
+        import pysam
+        from collections import OrderedDict
+        from cPickle import load
+        from math import isnan
+        from metawaffle.bam2count import write_matrix, sort_BAMtsv
+
+        inbam = args.bam
+        resolution = args.resolution
+        outdir = args.outdir
+        biases_file = args.biases
+        ncpus = args.ncpus
+
+        logger.debug('[MAIN]: Parameters:')
+        logger.debug(args)
+
+        logger.info('[MAIN]:  Loading BAM file')
+        bamfile = pysam.AlignmentFile(inbam, 'rb')
+        sections = OrderedDict(zip(bamfile.references, [x / resolution + 1 for x in bamfile.lengths]))
+
+        logger.info('[MAIN]:  Getting biases...')
+        biases = load(open(biases_file))
+        bads = biases.get('badcol')
+        all_biases = biases.get('biases')
+        bias = {k: all_biases[k] for k in all_biases if not isnan(all_biases[k])}
+        decay = biases.get('decay')
+        for chromosome in sections.keys():
+            logger.info('[MAIN]:  Splitting peak pairs per chromosome...')
+            write_matrix(inbam, resolution, biases_file, outdir, region1=chromosome, ncpus=ncpus)
+        sort_BAMtsv(outdir, resolution)
+        logger.info('[MAIN]: DONE.')
+
+    def check_peaks(self, argv):
+        parser = MyParser(
+            description='''
+            Get information about the distribution and width of peaks of interest, 
+            in order to better decide the genomic interval and the windows span around the peak.''',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+        parser.add_argument(
+            'input_file', 
+            type=str,
+            help='''BED file containing of the peaks: <chromosome>\t<start>\t<end>\n''')
+
+        parser.add_argument(
+            'outdir',
+            type=str,
+            help='''Output directory to store the plots with the information.''')
+
+        args = parser.parse_args(argv[2:])
+
+        from metawaffle.check_peaks import check
+
+        input_file = args.input_file
+        outdir = args.outdir
+
+        logger.debug('[MAIN]: Parameters:')
+        logger.debug(args)
+
+        logger.info('[MAIN]:  Running test.')
+        check(input_file, outdir)
+        logger.info('[MAIN]:  DONE.')
+
+
+    def pairlist(self, argv):
+        parser = MyParser(
+            description='''
+            Get the list of all the possible combination of the pairs, within a interval of distance''',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+        windows = ('255000-1000000',
+                   '1000000-2500000',
+                   '2500000-5000000',
+                   '5000000-10000000',
+                   '10000000-15000000',
+                   '15000000-20000000',
+                   '20000000-30000000')
+
+        parser.add_argument(
+            'peak_file',
+            type=str,
+            help='''BED file containing of the peaks: <chromosome>\t<start>\t<end>\n''')
+
+        parser.add_argument(
+            'outdir',
+            type=str,
+            help='''Output directory to store the plots with the information.''')
+
+        parser.add_argument(
+            'sizes',
+            type=str,
+            help='''TSV file containing the chromosome lengths.''')
+
+        parser.add_argument(
+            'name',
+            type=str,
+            help='''Label id to store the results.''')
+
+        parser.add_argument(
+            'windows_span',
+            type=int,
+            help='''bp that will be added around the center of the peak. 
+            Highly recommended to add a span considering the resolution and the peak width
+             in order to get the central bin containing the peak''')
+
+        parser.add_argument(
+            'max_dist',
+            type=int,
+            help='''Maximum distance allowed between the center of two peaks.''')
+
+        parser.add_argument(
+            'windows',
+            type=str, default=windows, metavar='INT-INT', nargs='+',
+            help='''[%(default)s] If only interested in some intervals to check:
+                        -w 1000000-2000000 2000000-5000000" correspond to 2 window intervals,
+                        one from 1Mb to 2Mb and one from 2Mb to 5Mb.''')
+
+        args = parser.parse_args(argv[2:])
+
+        from metawaffle.pairlist import binning_bed
+        from collections import defaultdict
+
+        peak_file = args.peak_file
+        outdir = args.outdir
+        sizes = args.sizes
+        name = args.name
+        windows_span = args.windows_span
+        max_dist = args.max_dist
+        windows = args.windows
+
+        logger.debug('[MAIN]: Parameters:')
+        logger.debug(args)
+
+        logger.info('[MAIN]:  Running pair-wise combinations...')
+        
+        
+        chrom_sizes = defaultdict(int)
+        
+        with open(sizes, 'r') as r:
+            for line in r:
+                chrom_sizes[line.split()[0]] = int(line.split()[1])
+
+        windows = [[int(x) for x in win.split('-')] for win in windows]
+
+        binning_bed(peak_file, windows_span, max_dist, outdir, name, chrom_sizes, windows)
+
+        logger.info('[MAIN]:  Sublists written!')
+
+
+    def peak2matrix(self, argv):
+        parser = MyParser(
+            description='''
+            Get the list of all the possible combination of the pairs, within a interval of distance''',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+        parser.add_argument(
+            'pairs_file',
+            type=str,
+            help='''Pairs file, obtained by pairlist command with the following format: 
+            <chrom1:start1-end1>\t<chrom2:start2-end2>\n''')
+
+        parser.add_argument(
+            'sizes',
+            type=str,
+            help='''TSV file containing the chromosome lengths.''')
+
+        parser.add_argument(
+            'resolution',
+            type=int,
+            help='''Resolution to extract contact matrices (bp).''')
+
+        parser.add_argument(
+            'tmpdir',
+            type=str,
+            help='''Temporal folder for parsing.''')
+
+        parser.add_argument(
+            'outdir',
+            type=str,
+            help='''Output directory to store the file with the coordinates and the associated contact matrix.''')
+
+        parser.add_argument(
+            'ncpus',
+            type=int,default=8,
+            help='''%(default)s] number of cpus to be used for parsing the HiC-BAM file''')
+
+        parser.add_argument(
+            'name', 
+            type=str,
+            help='''ID label to store the results.''')
+
+        parser.add_argument(
+            'biases', 
+            type=str,
+            help='''Biases file (pickle). Check the example for more information.''')
+
+        parser.add_argument(
+            'mats', 
+            type=str,
+            help='''Folder where the contact matrices matrices are located.''')
+
+        parser.add_argument(
+            '-sample',dest='sample', 
+            type=int, required=False,
+            help='''Number of pairs that will be extracted randomly.''')
+
+        parser.add_argument(
+            'windows_span',
+            type=int,
+            help='''bp added around target location''')
+
+        parser.add_argument(
+            '-A', dest='get_all', required=False, default=False,
+            type=bool,
+            help='''Use this tag to get all the submatrices.''')
+
+        args = parser.parse_args(argv[2:])
+
+        from metawaffle.peak2matrix import extract_coordinates, random_line, eq_pos, greater_pos, readfiles, write_matrices
+        import subprocess
+        import glob
+        from pickle import load
+        from collections import defaultdict
+
+        sizes = args.sizes
+        resolution = args.resolution
+        pairs_file = args.pairs_file
+        tmpdir = args.tmpdir
+        outdir = args.outdir
+        ncpus = args.ncpus
+        name = args.name
+        biases = args.biases
+        mats = args.mats
+        sample = args.sample
+        windows_span = args.windows_span
+
+        if args.get_all:
+            get_all = args.get_all
+        else:
+            get_all = False
+
+        logger.debug('[MAIN]: Parameters:')
+        logger.debug(args)
+
+        logger.info('[MAIN]:  Running pair-wise combinations...')
+
+        total = 0
+        section_pos = dict()
+        with open(sizes, 'r') as r:
+            for line in r:
+                section_pos[line.split()[0]] = (total, total + int(int(line.split()[1]) / resolution))
+                total += int(int(line.split()[1]) / resolution)
+
+        if args.get_all == False:
+            logger.info('[MAIN]: Getting randomly: %i from %s'%(sample, name))
+            # split file  peaks per chromosome
+            random_file = open(outdir + name + '_' + str(sample) + 'rnd.tsv', 'wa')
+            for n in range(sample):
+                line = random_line(pairs_file)
+                random_file.write('{}\n'.format(line))
+            random_file.close()
+
+            logger.info('[MAIN]: Splitting peak pairs per chromosome...')
+            fh = subprocess.Popen("awk -F: '{print >> " + '"' + tmpdir + '"' + " $1; close($1)}' %s " % (
+            (outdir + name + '_' + str(sample) + 'rnd.tsv')),
+                                  shell=True)
+            fh.communicate()  # wait until the process finishes
+
+        else:
+            logger.info('[MAIN]: Getting all submatrices from %s'%(name))
+            logger.info('[MAIN]: Splitting peak pairs per chromosome...')
+            fh = subprocess.Popen("awk -F: '{print >> " + '"' + tmpdir + '"' + " $1; close($1)}' %s " % ((pairs_file)),
+                                  shell=True)
+            fh.communicate()  # wait until the process finishes
+
+        chromosomes_file = glob.glob(tmpdir + 'chr*')
+        badcols = load(open(biases))['badcol']
+        global avg_nrm
+        avg_nrm = defaultdict(lambda: defaultdict(float))
+        global names
+        names = defaultdict(tuple)
+
+        for peak_list in chromosomes_file:
+            chromosome = peak_list.split('/')[-1]
+            peakfile = open(peak_list, 'r')
+            # parallel job to write coordinates, splitting peak file, write tmp files
+            logger.info('[MAIN]: Writing coordinates file & sorting %s'%(chromosome))
+            extract_coordinates(peak_list=peakfile, chromosome=chromosome, resolution=resolution,
+                                section_pos=section_pos, tmpdir=tmpdir, badcols=badcols, names=names)
+
+            tmp_chr = glob.glob(tmpdir + '%s_*' % chromosome)
+            fh = subprocess.Popen(("sort -k1,2n --parallel=%i -S 20%% %s"
+                                   " --temporary-directory=%s > %s%s_sorted") % (ncpus, tmp_chr[0],tmpdir,
+                                                                                    tmpdir, chromosome), shell=True)
+            fh.communicate()
+            os.system("rm " + tmp_chr[0])
+
+            file1 = mats + '%s_mat_%ikb.tsv' % (chromosome, resolution / 1000)
+            file2 = '%s%s_sorted' % (tmpdir, chromosome)
+            check_size = open(file2, 'r')
+            nsize = check_size.readlines()
+            if len(nsize) > 0:
+                readfiles(file1, file2, chromosome, avg_nrm)
+                os.system("rm %s%s_sorted" % (tmpdir, chromosome))
+                os.system("rm %s%s" % (tmpdir, chromosome))
+            else:
+                logger.info('[MAIN]: No information for %s,  all badcolumns... :('%(chromosome))
+                os.system("rm %s%s_sorted" % (tmpdir, chromosome))
+                os.system("rm %s%s" % (tmpdir, chromosome))
+        size = ((windows_span * 2) / resolution) + 1
+        if len(avg_nrm) != 0:
+            write_matrices(avg_nrm, outdir, name, size, names)  # write individual matrix to 1D line
+
+        else:
+            logger.info('[MAIN]: No information in %s'%(name))
+
+    def sofm(self, argv):
+        parser = MyParser(
+            description='''
+            Deconvolution, and classification of the contact matrices according to their structural pattern.
+            Use of a competitive neural network from neupy package. To know more about the parameters, and who it works: 
+            http://neupy.com/apidocs/neupy.algorithms.competitive.sofm.html''',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+        parser.add_argument(
+            'pairs_file',
+            type=str,
+            help='''Output file from peak2matrix script, row-wise file with the coordinates and their contact matrix.''')
+
+        parser.add_argument(
+            'outdir',
+            type=str,
+            help='''Output directory to store the results.''')
+
+        parser.add_argument(
+            'label_name',
+            type=str,
+            help='''ID label to store the results.''')
+
+        parser.add_argument(
+            'epoch', 
+            type=int,
+            help='''Number of iterationts to train.''')
+
+        parser.add_argument(
+            'size', 
+            type=int,
+            help='''Number of bins, width of the coordinates. For example if we have a coordinate of 45 kb at 
+            5 kb resolution, the size will be 9''')
+
+        parser.add_argument(
+            'grid',
+            type=int,
+            help='''Grid size, will be symmetrical, this defines the number of neurons: a grid of 4 has 16 neurons.''')
+
+        parser.add_argument(
+            'learning',
+            type=float,
+            help='''Learning radius, Parameter defines radius within which we consider 
+            all neurons as neighbours to the winning neuron. The bigger the value the more neurons will
+             be updated after each iteration.''')
+
+        parser.add_argument(
+            'std', 
+            type=float,
+            help='''Standard deviation. Parameters controls learning rate for each neighbour. 
+            The further neighbour neuron from the winning neuron the smaller that learning rate for it. 
+            Learning rate scales based on the factors produced by the normal distribution with center in the 
+            place of a winning neuron and standard deviation specified as a parameter. The learning rate for 
+            the winning neuron is always equal to the value specified in the step parameter and for neighbour 
+            neurons it’s always lower. The bigger the value for this parameter the bigger learning rate 
+            for the neighbour neurons.''')
+
+        parser.add_argument(
+            'step',
+            type=float,
+            help='''Steps, learning rate. ''')
+
+        parser.add_argument(
+            '-plot',dest='plot', required='False',  
+            type=bool,
+            help='''Optional argument to plot the SOFM map''')
+
+
+        args = parser.parse_args(argv[2:])
+
+        from metawaffle.sofm import matrix_to_line, draw_grid, plot_sofm
+        import numpy as np
+        from sklearn.preprocessing import scale
+        from neupy import architectures, algorithms, environment
+        import pickle
+        import matplotlib
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+
+        pairs_file = args.pairs_file
+        outdir = args.outdir
+        label_name = args.label_name
+        epoch = args.epoch
+        size = args.size
+        grid = args.grid
+        learning = args.learning
+        std = args.std
+        step = args.step
+
+        logger.debug('[MAIN]: Parameters:')
+        logger.debug(args)
+
+        coords = []
+        array = []
+        with open(pairs_file, 'r')as r:
+            for line in r:
+                peaks = '-'.join(line.split(',')[:2])
+                coords.append(peaks)
+                vals = map(np.float32, line.replace("\r\n", "").split(',')[2:])
+                w_vals = vals
+                w_vals[w_vals == 0.] = 0.001
+                logarithmic = np.log2(w_vals)
+                logarithmic = 1 / (1 + np.exp(-logarithmic))
+                array.append(logarithmic)
+
+        coords = np.asarray(coords)
+        array = scale(array, axis=0, with_mean=True, with_std=True, copy=True)
+
+        environment.reproducible()
+
+        logger.info('[MAIN]: Computing SOFM...')
+
+        sofm_object = algorithms.SOFM(n_inputs=np.shape(array)[1], weight='sample_from_data',
+                               features_grid=(grid, grid), distance='euclid', grid_type='rect',
+                               learning_radius=learning, reduce_radius_after=5, std=std, reduce_std_after=5,
+                               step=step, reduce_step_after=5, verbose=True, shuffle_data=True)
+
+        sofm_object.train(np.asarray(array), epochs=epoch)
+        with open(outdir + 'sofm.pickle', 'wb') as f:
+            pickle.dump(sofm_object, f)
+
+        logger.info('[MAIN]: Classifying pairs, and storing results...')
+        sample, info_array = draw_grid(sofm_object, array, array, coords, outdir, size)
+        plt.ioff()
+        plt.switch_backend('Agg')
+        fig = plt.figure(figsize=(5, 5))
+        ax = plt.gca()
+        im = ax.imshow(info_array, cmap='Greys')
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        cbar = plt.colorbar(im, cax = cax)
+        cbar.ax.set_ylabel('Number of pairs', rotation=-90)
+        plt.savefig(outdir + 'heatmap_info_%s' % (label_name))
+        plt.close(fig)
+        np.save(outdir + 'weight_matrix', sofm_object.weight)
+
+        if args.plot == True:
+            logger.info('[MAIN]: Plotting SOFM map...')
+            plot_sofm(pairs_file, outdir, size, grid, label_name)
+
+
+def metawaffle_parser():
+    usage = '''\
+        metawaffle <command> [options]
+
+        Commands:
+            bam2count             Convert bam file into tab-separated counts, raw and normalized.
+            check_peaks           To evaluate peaks of interest, and get the widht and distance between contiguous peaks.
+            pairlist              Used to generate the coordinates list to extract the matrices.
+            peak2matrix           Contains the tools to extract the contact matrices from the pair list.
+            sofm                  Used to classify the contact matrices according to their structural pattern.
+        
+        Run metawaffle <command> -h for help on a specific command.
+        '''
+    parser = argparse.ArgumentParser(
+        description="""
+        metawaffle: Deconvolute structural pattern from regions of interest.""",
+        usage=textwrap.dedent(usage)
+    )
+
+    parser.add_argument(
+        '--version', dest='print_version',
+        action='store_true',
+        help='''Print version information'''
+    )
+    parser.set_defaults(print_version=False)
+
+    parser.add_argument(
+        '--verbose', '-v', dest='verbosity',
+        action='count',
+        default=0,
+        help='''Set verbosity level: Can be chained like
+        '-vvv' to increase verbosity. Default is to show
+        errors, warnings, and info messages (same as '-vv').
+        '-v' shows only errors and warnings, '-vvv' shows errors, warnings,
+        info, and debug messages in addition.'''
+    )
+
+    parser.add_argument(
+        '-l', '--log-file', dest='log_file',
+        help='''Path to file in which to save log.'''
+    )
+
+    parser.add_argument('command', nargs='?', help='Subcommand to run')
+
+    return parser
+
+
+class MyParser(argparse.ArgumentParser):
+    def error(self, message):
+        sys.stderr.write('error: %s\n' % message)
+        self.print_help()
+        sys.exit(2)
+
+
+if __name__ == '__main__':
+    Metawaffle()
