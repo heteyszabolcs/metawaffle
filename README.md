@@ -47,10 +47,10 @@ The biases have to be computed before running `bam2count`. We use `TADbit` as it
 
 ```bash
 metawaffle bam2count \
--bam examples/chr22_GM12878.bam \
--r 5000 \
--o examples/ \
--b examples/biases_chr22_GM12878.pickle \
+example/chr22_GM12878.bam \
+5000 \
+example/ \
+example/biases_5kb_GM12878.pickle \
 ```
 You can notice that if you do not have a BAM format file, you can use a tabseparated format with the same information as the output file. The output file contains 4 columns: 
 
@@ -64,8 +64,8 @@ For the tutorial we will use the ChIP-seq peaks from CTCF in the chromosome 22 (
 
 ```bash
 metawaffle check_peaks \
--i CTCF_chr22.bed \
--o examples/ \
+example/ctcf_chr2.bed \
+example/ \
 ```
 The quality check will provide worthy information to decide the genomic interval of distance and the windows span around the center of the peak. Then, the pair list will be generated running the `pairlist` script.
 
