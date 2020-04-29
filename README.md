@@ -1,4 +1,4 @@
-<img src="https://github.com/3DGenomes/meta-waffle/blob/master/Logo_capture.png" height= "225" width="500">
+<img src="https://github.com/3DGenomes/metawaffle/blob/master/Logo_capture.png" height= "225" width="500">
 
 This add-on of TADbit allows you to deconvolve the structural signal from a set of regions of interest and obtain the different structural clusters.  
 
@@ -19,21 +19,21 @@ This add-on of TADbit allows you to deconvolve the structural signal from a set 
 <!-- /TOC -->
 
 # Requirements
-Meta-waffle was written and tested using Python 3.6, 3.7.
+Metawaffle was written and tested using Python 2.7.
 It requires the packages `TADbit` (0.4.97),`Neupy` (0.6.4),`matplotlib` (3.2.1), `scipy` (1.0.0), `numpy` (1.14.0), `pandas` (0.22.0),`pysam` (0.15.2), `pickle` (2.0.0), `functools` (3.2.3), `multiprocess` (0.70.9) and `scikit-learn` (0.22.2).
 
 # Installation
 
-In order to install the package you can download the code from our [GitHub repo](https://github.com/3DGenomes/meta-waffle) and install it manually. If needed, the dependencies will be downloaded automatically; if you encounter problems, try to install the other [requirements](#requirements) manually.
+In order to install the package you can download the code from our [GitHub repo](https://github.com/3DGenomes/metawaffle) and install it manually. If needed, the dependencies will be downloaded automatically; if you encounter problems, try to install the other [requirements](#requirements) manually.
 
 ```bash
-git clone https://github.com/3DGenomes/meta-waffle # or download manually
-cd meta-waffle
+git clone https://github.com/3DGenomes/metawaffle # or download manually
+cd metawaffle
 python setup.py install
 ```
 
 # Quick start
-After the installation, you can run the provided example to familiarize with the functions of meta-waffle.
+After the installation, you can run the provided example to familiarize with the functions of metawaffle.
 
 Use `metawaffle -h` for quick help and orientation.
 ## Preparing the input files
@@ -67,7 +67,7 @@ example/ \
 ```
 The quality check will provide worthy information to decide the genomic interval of distance and the windows span around the center of the peak. Then, the pair list will be generated running the `pairlist` script.
 
-<img src="https://github.com/3DGenomes/meta-waffle/blob/master/images/test_evaluation.png" height= "350" width="470">
+<img src="https://github.com/3DGenomes/metawaffle/blob/master/images/test_evaluation.png" height= "350" width="470">
 
 ```bash
 metawaffle pairlist \
@@ -134,15 +134,15 @@ After running this command, you will obtain various files:
 
 - Cluster_n.bed: You will obtain bed files for each of the neurons according to the grid size, with the classified coordinates.
 - Heatmap_info : image with the number of coordinates classified per neuron, in order to check how the coordinates have been distributed in the SOFM map.
-<img src="https://github.com/3DGenomes/meta-waffle/blob/master/images/heatmap_info_ctcf_chr2.png" height= "350" width="350">
+<img src="https://github.com/3DGenomes/metawaffle/blob/master/images/heatmap_info_ctcf_chr2.png" height= "350" width="350">
 - weight_matrix.npy: In here you will have the weight of each of the input values provided to SOFM.
 - sofm.pickle: The model trained. In order to repeat or re-run the analysis.
 - If -plot True: image of the SOFM map. 
-<img src="https://github.com/3DGenomes/meta-waffle/blob/master/images/ctcf_chr2_SOFM.png" height= "350" width="350">
+<img src="https://github.com/3DGenomes/metawaffle/blob/master/images/ctcf_chr2_SOFM.png" height= "350" width="350">
 
 
 # Usage
-meta-waffle has these basic commands: 
+metawaffle has these basic commands: 
 * `bam2count` to convert the bamfile into tabseparated counts.
 * `check_peaks` to evaluate peaks of interest, and get the widht and distance between contiguous peaks.
 * `pairlist` used to generate the coordinates list to extract the matrices.
