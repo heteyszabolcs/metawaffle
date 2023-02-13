@@ -166,3 +166,26 @@ Please, cite this article if you use TADbit.
 Serra, F., Baù, D., Goodstadt, M., Castillo, D. Filion, G., & Marti-Renom, M.A. (2017).
 **Automatic analysis and 3D-modelling of Hi-C data using TADbit reveals structural features of the fly chromatin colors.**
 *PLOS Comp Bio* 13(7) e1005665. `doi:10.1371/journal.pcbi.1005665 <https://doi.org/10.1371/journal.pcbi.1005665>`_
+
+My successfull run
+--------------------------
+
+peak2matrix function:
+metawaffle peak2matrix output/prom_ctcf_chr1_255000_2500000.tsv \
+../data/mm10.chrom.sizes.txt \
+10000 \ 
+output/ \
+output/ \
+8 \
+prom_ctcf_chr1 \
+TADbit_normalization/biases_10kb.pickle \
+../data/Bonev_et_al_chr1_10kb_matrix.tsv \
+25000 \
+-A True
+
+Here I used a **HiC matrix divided by 10 kb** (that was the resolution I used for the peak2matrix function!). 
+In addition, I made two helper functions in the peak2matrix function for the run (*within_region, around_region* functions).
+
+peak2matrix function:
+
+metawaffle sofm output/matrices_ctcf_chr1.tsv output/sofm/ ctcf_chr1 30 6 30 5 0.5 0.01 -plot True
