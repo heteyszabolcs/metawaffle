@@ -60,7 +60,8 @@ def plot_sofm(pairs_file, outdir, size, grid, label_name):
                 pairs_cluster[(pair1,pair2)] = cluster
                 cluster_pairs[cluster].append((pair1, pair2))
     total_cells = float(size * size)
-    number_clusters = len(cluster_pairs.keys())
+    #number_clusters = len(cluster_pairs.keys())
+    number_clusters = len(all_clusters_files)
     matrix_info = np.zeros((number_clusters,size*size))
     length_cluster = defaultdict(int)
     pairs_mat = defaultdict(list)

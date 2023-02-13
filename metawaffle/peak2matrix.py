@@ -14,7 +14,7 @@ logger = logging.getLogger('')
 def extract_coordinates(peak_list,resolution,section_pos,tmpdir,chromosome,badcols, names):
     '''Chunk file into multiple, and write them in parallel per file write coord of 10,000 peak pairs
     Write a dictionary depending of pairs of peak per target'''
-
+    
     unique_filename = str(uuid.uuid4())
     w = open(tmpdir+chromosome+'_{}.tmp'.format(unique_filename),'wa')
     position = 0
@@ -56,6 +56,22 @@ def eq_pos(pos1, pos2):
 def greater_pos(pos1, pos2):
     return pos1 > pos2
 
+# helper function to keep peaks which are within the region of interest
+def within_region(pos1, pos2):
+    pos1_x = pos1[0]
+    pos1_y = pos1[1]
+    pos2_x = pos2[0]
+    pos2_y = pos2[1]
+    return (pos1_x < pos2_x) & (pos1_y > pos2_y)
+
+def around_region(pos1, pos2):
+    pos1_x = pos1[0] - 20
+    pos1_y = pos1[1] + 20
+    pos2_x = pos2[0]
+    pos2_y = pos2[1]
+    return (pos1_x < pos2_x) & (pos1_y > pos2_y)
+
+
 def readfiles(file1,file2,chromosome, avg_nrm):
     def split_line1(l):
         if len(l.split()) == 4:
@@ -64,7 +80,7 @@ def readfiles(file1,file2,chromosome, avg_nrm):
         else:
             a, b, c = l.split()
             return (int(a), int(b)), c
-
+    
     def split_line2(l):
         a, b, c, d, f = l.split()
         return (int(a), int(b)), int(c), int(d), f
@@ -75,7 +91,20 @@ def readfiles(file1,file2,chromosome, avg_nrm):
     pos2, x, y, f = split_line2(fh2.next())
     try:
         while True:
+            print pos1, pos2
             if eq_pos(pos1, pos2):
+                avg_nrm[f][(x,y)] = float(nrm)
+                pos2_ = pos2
+                pos2, x, y, f = split_line2(fh2.next())
+                if pos2_ != pos2:  # some cells in the peak file are repeated but different cell in metamatrix
+                    pos1, nrm = split_line1(fh1.next())
+            elif within_region(pos1, pos2):
+                avg_nrm[f][(x,y)] = float(nrm)
+                pos2_ = pos2
+                pos2, x, y, f = split_line2(fh2.next())
+                if pos2_ != pos2:  # some cells in the peak file are repeated but different cell in metamatrix
+                    pos1, nrm = split_line1(fh1.next())
+            elif around_region(pos1, pos2):
                 avg_nrm[f][(x,y)] = float(nrm)
                 pos2_ = pos2
                 pos2, x, y, f = split_line2(fh2.next())
@@ -92,6 +121,7 @@ def readfiles(file1,file2,chromosome, avg_nrm):
     logger.info('[MAIN]: Finished.')
 
 def write_matrices(avg_nrm, outdir, name, size, names):
+     
     '''To obtain the mean matrix, divide raw and norm per passages'''
     logger.info('[MAIN]: Writing submatrices...')
     w = open(outdir+'/matrices_%s.tsv'%(name),'wa')

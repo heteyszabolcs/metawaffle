@@ -35,6 +35,7 @@ def write_matrix(inbam, resolution, biases, outdir,
     for crm in sections:
         section_pos[crm] = (total, total + sections[crm])
         total += sections[crm]
+    print(section_pos)
 
     if biases:
         bias1, bias2, decay, bads1, bads2 = get_biases_region(biases, bin_coords)
@@ -47,7 +48,7 @@ def write_matrix(inbam, resolution, biases, outdir,
         printime('  - Writing matrices')
 
     fnam = outdir + '{}_mat_{}kb.tsv'.format(region1, resolution / 1000)
-    mkdir (outdir)
+    #mkdir (outdir)
     out = open(os.path.join(outdir, fnam), 'w')
 
     # pull all sub-matrices and write full matrix
@@ -57,6 +58,7 @@ def write_matrix(inbam, resolution, biases, outdir,
             continue
         if j not in bads1 and k not in bads2 and abs(j-k) in decay[c]:
             n = v / bias1[j] / bias2[k] / decay[c][abs(j-k)]
+            print(section_pos)
             pos1 = j + section_pos[region1][0]
             pos2 = k + section_pos[region1][0]
             out.write('{}\t{}\t{}\t{}\n'.format(pos1, pos2, v, n))

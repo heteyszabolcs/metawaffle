@@ -24,6 +24,9 @@ def check(input_file, outdir):
         for i in range(len(ordered)-1):
             distances.append(np.log10(ordered[i+1] - ordered[i]))
 
+    for i in range(len(distances)):
+        if np.isneginf(distances[i]):
+            distances[i] = 0
 
     plt.ioff()
     plt.switch_backend('Agg')
